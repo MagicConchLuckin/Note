@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Penguin - Pixel Art</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: monospace;
+            transition: background 2s ease;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        body.day {
+            background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 50%, #E0F6FF 100%);
+        }
+
+        body.night {
+            background: linear-gradient(180deg, #0f1a3d 0%, #1a2b5e 30%, #2d4570 70%, #3a5a7a 100%);
+        }
+
+        .scene-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            transform-origin: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .scene-container {
+                transform: scale(0.8);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .scene-container {
+                transform: scale(0.6);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .scene-container {
+                transform: scale(0.4);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scene-container">
+        <canvas id="canvas" width="800" height="600"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 禁用抗锯齿以保持像素风格
+        ctx.imageSmoothingEnabled = false;
+
+        let animationFrame = 0;
+        let pageFlipFrame = 0;
+        const pageFlipDuration = 180; // 3秒 @ 60fps
+        
+        // 颜色调色板
+        const colors = {
+            // 企鹅颜色
+            penguinDark: '#2c3e50',
+            penguinBody: '#34495e',
+            penguinWhite: '#ecf0f1',
+            penguinBeak: '#e67e22',
+            penguinEye: '#2c3e50',
+            penguinBlush: '#ffb3ba',
+            
+            // 书本颜色
+            bookCover: '#3498db',
+            bookPages: '#f5f5dc',
+            bookText: '#666',
+            bookShadow: '#2c3e50',
+            
+            // 环境颜色 (夜晚)
+            nightFloor: '#5a4a3a',
+            nightWall: '#4a3a2a'
+        };
+
+        // 绘制像素
+        function drawPixel(x, y, color, size = 4) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * size, y * size, size, size);
+        }
+
+        // 绘制矩形区域
+        function drawRect(x, y, w, h, color, size = 4) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * size, y * size, w * size, h * size);
+        }
+
+        // 绘制企鹅
+        function drawPenguin(x, y, blinkFrame, swayOffset) {
+            const s = 4; // 像素大小
+            const shouldBlink = blinkFrame > 0;
+            const sway = Math.floor(swayOffset); // 身体晃动偏移
+            
+            // 头部 - 深蓝/灰色
+            drawRect(x + 8 + sway, y, 9, 2, colors.penguinDark, s);
+            drawRect(x + 6 + sway, y + 2, 13, 2, colors.penguinDark, s);
+            drawRect(x + 5 + sway, y + 4, 15, 2, colors.penguinDark, s);
+            drawRect(x + 4 + sway, y + 6, 17, 8, colors.penguinBody, s);
+            
+            // 脸部白色区域
+            drawRect(x + 7 + sway, y + 7, 11, 6, colors.penguinWhite, s);
+            
+            // 眼睛 - 偶尔眨眼
+            if (!shouldBlink) {
+                drawRect(x + 9 + sway, y + 8, 2, 2, colors.penguinWhite, s);
+                drawRect(x + 14 + sway, y + 8, 2, 2, colors.penguinWhite, s);
+                drawRect(x + 10 + sway, y + 9, 1, 1, colors.penguinEye, s);
+                drawRect(x + 15 + sway, y + 9, 1, 1, colors.penguinEye, s);
+            } else {
+                drawRect(x + 9 + sway, y + 9, 2, 1, colors.penguinEye, s);
+                drawRect(x + 14 + sway, y + 9, 2, 1, colors.penguinEye, s);
+            }
+            
+            // 脸颊红晕
+            drawPixel(x + 7 + sway, y + 11, colors.penguinBlush, s);
+            drawPixel(x + 17 + sway, y + 11, colors.penguinBlush, s);
+            
+            // 嘴巴
+            drawRect(x + 11 + sway, y + 11, 3, 1, colors.penguinBeak, s);
+            drawRect(x + 11 + sway, y + 12, 3, 1, colors.penguinBeak, s);
+            
+            // 身体
+            drawRect(x + 3 + sway, y + 14, 19, 2, colors.penguinBody, s);
+            drawRect(x + 2 + sway, y + 16, 21, 8, colors.penguinBody, s);
+            drawRect(x + 3 + sway, y + 24, 19, 2, colors.penguinBody, s);
+            
+            // 肚子白色
+            drawRect(x + 7 + sway, y + 16, 11, 8, colors.penguinWhite, s);
+            
+            // 左翅膀
+            drawRect(x + 1 + sway, y + 18, 2, 6, colors.penguinBody, s);
+            drawRect(x + sway, y + 20, 1, 3, colors.penguinBody, s);
+            
+            // 右翅膀 (翻书动作)
+            const wingOffset = pageFlipFrame > pageFlipDuration * 0.7 && pageFlipFrame < pageFlipDuration * 0.85 ? 2 : 0;
+            drawRect(x + 22 + sway, y + 18 - wingOffset, 2, 6, colors.penguinBody, s);
+            drawRect(x + 24 + sway, y + 20 - wingOffset, 1, 3, colors.penguinBody, s);
+            
+            // 脚
+            drawRect(x + 7 + sway, y + 26, 3, 2, colors.penguinBeak, s);
+            drawRect(x + 15 + sway, y + 26, 3, 2, colors.penguinBeak, s);
+        }
+
+        // 绘制书本（更小，带翻页动画）
+        function drawBook(x, y, flipProgress) {
+            const s = 4;
+            
+            // 书本底部阴影
+            drawRect(x - 1, y + 13, 17, 1, 'rgba(0,0,0,0.15)', s);
+            
+            // 左侧书页 - 有轻微动画效果
+            const leftPageOffset = flipProgress > 0.7 && flipProgress < 0.85 ? 
+                Math.floor((flipProgress - 0.7) / 0.15 * 2) : 0;
+            
+            drawRect(x - leftPageOffset, y, 7, 12, colors.bookPages, s);
+            drawRect(x - leftPageOffset, y, 7, 1, colors.bookShadow, s);
+            drawRect(x - leftPageOffset, y, 1, 12, colors.bookShadow, s);
+            drawRect(x - leftPageOffset, y + 11, 7, 1, colors.bookShadow, s);
+            
+            // 书页文字线条
+            for (let i = 0; i < 3; i++) {
+                drawRect(x + 1 - leftPageOffset, y + 2 + i * 3, 4, 1, colors.bookText, s);
+            }
+            
+            // 书脊
+            drawRect(x + 7, y, 2, 12, colors.bookCover, s);
+            drawRect(x + 7, y + 1, 2, 10, '#2980b9', s);
+            
+            // 右侧书页动画
+            if (flipProgress < 0.7) {
+                // 未翻页状态
+                drawRect(x + 9, y, 7, 12, colors.bookPages, s);
+                drawRect(x + 9, y, 7, 1, colors.bookShadow, s);
+                drawRect(x + 15, y, 1, 12, colors.bookShadow, s);
+                drawRect(x + 9, y + 11, 7, 1, colors.bookShadow, s);
+                
+                for (let i = 0; i < 3; i++) {
+                    drawRect(x + 10, y + 2 + i * 3, 4, 1, colors.bookText, s);
+                }
+            } else if (flipProgress < 0.85) {
+                // 翻页中
+                const angle = (flipProgress - 0.7) / 0.15;
+                const pageWidth = Math.floor(7 * (1 - angle));
+                
+                if (pageWidth > 0) {
+                    drawRect(x + 9, y, pageWidth, 12, colors.bookPages, s);
+                    drawRect(x + 9 + pageWidth - 1, y, 1, 12, '#d4d4b8', s);
+                }
+                
+                // 翻页阴影效果
+                const shadowWidth = Math.floor(3 * angle);
+                if (shadowWidth > 0) {
+                    drawRect(x + 9, y, shadowWidth, 12, 'rgba(0,0,0,0.1)', s);
+                }
+            } else {
+                // 翻页完成，显示新页面
+                drawRect(x + 9, y, 7, 12, colors.bookPages, s);
+                drawRect(x + 9, y, 7, 1, colors.bookShadow, s);
+                drawRect(x + 15, y, 1, 12, colors.bookShadow, s);
+                drawRect(x + 9, y + 11, 7, 1, colors.bookShadow, s);
+                
+                // 新页面的文字（不同排列）
+                for (let i = 0; i < 3; i++) {
+                    const lineWidth = i === 1 ? 5 : 4;
+                    drawRect(x + 10, y + 3 + i * 3, lineWidth, 1, colors.bookText, s);
+                }
+            }
+        }
+
+        // 绘制场景
+        function drawScene() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 计算眨眼（偶尔眨眼，更自然）
+            const blinkCycle = 300; // 5秒一次
+            const blinkFrame = animationFrame % blinkCycle;
+            const isBlinking = blinkFrame >= 148 && blinkFrame <= 152 ? blinkFrame - 148 : 0;
+            
+            // 计算身体晃动（缓慢的左右摇摆）
+            const swayCycle = 180; // 3秒一个周期
+            const swayAngle = (animationFrame % swayCycle) / swayCycle * Math.PI * 2;
+            const swayOffset = Math.sin(swayAngle) * 1.5; // 左右晃动1.5个像素单位
+            
+            // 计算翻页进度
+            const flipProgress = pageFlipFrame / pageFlipDuration;
+            
+            // 绘制企鹅（居中）
+            drawPenguin(85, 50, isBlinking, swayOffset);
+            
+            // 绘制书本（在企鹅手部附近，较小）
+            drawBook(107, 70, flipProgress);
+            
+            // 更新动画帧
+            animationFrame++;
+            pageFlipFrame++;
+            
+            if (pageFlipFrame >= pageFlipDuration) {
+                pageFlipFrame = 0;
+            }
+            
+            requestAnimationFrame(drawScene);
+        }
+
+        // 根据系统时间切换背景
+        function updateBackground() {
+            const hour = new Date().getHours();
+            const body = document.body;
+            
+            if (hour >= 6 && hour < 18) {
+                body.className = 'day';
+            } else {
+                body.className = 'night';
+            }
+        }
+
+        // 初始化
+        updateBackground();
+        setInterval(updateBackground, 60000);
+        
+        // 开始动画
+        drawScene();
+    </script>
+</body>
+</html>
